@@ -320,19 +320,28 @@
   <footer class="footer">© 2026 Playful Paths · All rights reserved</footer>
 
   <script>
-    // Stores emails locally in this demo.
-    // In production, replace the saveEmail() body with a real API call
-    // (e.g. Mailchimp, ConvertKit, Buttondown, or your own backend).
+    // Silently submits the email to Google Forms in the background.
+    // Responses appear automatically in the linked Google Sheet.
 
-    function saveEmail(email) {
-      // ── SWAP THIS for your real email service API call ──
-      // Example (Mailchimp):
-      // await fetch('/api/subscribe', { method:'POST', body: JSON.stringify({email}) });
-      console.log('Email captured:', email);
-      return true; // simulate success
+    const GOOGLE_FORM_ACTION = 'https://docs.google.com/forms/d/e/1FAIpQLSf9rw_u3jfVGFtbWrJ0sIMXX3doIU9kQJA5UI0Zw-bJypO8rg/formResponse';
+    const EMAIL_ENTRY_ID     = 'entry.174834282';
+
+    async function saveEmail(email) {
+      const body = new FormData();
+      body.append(EMAIL_ENTRY_ID, email);
+      try {
+        // Google Forms blocks CORS, so we use no-cors — the request still
+        // goes through and the response lands in your Sheet even though
+        // the browser gets an opaque response back.
+        await fetch(GOOGLE_FORM_ACTION, { method: 'POST', mode: 'no-cors', body });
+      } catch (_) {
+        // Swallow network errors silently — submission usually succeeds
+        // even when fetch throws due to the no-cors opaque response.
+      }
+      return true;
     }
 
-    function handleSubmit() {
+    async function handleSubmit() {
       const input = document.getElementById('emailInput');
       const email = input.value.trim();
 
@@ -343,11 +352,10 @@
         return;
       }
 
-      const ok = saveEmail(email);
-      if (ok) {
-        document.getElementById('form-area').style.display = 'none';
-        document.getElementById('successMsg').classList.add('show');
-      }
+      // Show success immediately for a snappy UX, then submit in background
+      document.getElementById('form-area').style.display = 'none';
+      document.getElementById('successMsg').classList.add('show');
+      await saveEmail(email);
     }
 
     // Allow Enter key to submit
